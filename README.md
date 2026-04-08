@@ -10,14 +10,6 @@ Benchmarking three interatomic potentials for amorphous SiO₂ fracture and wate
 | ReaxFF | real | 0.25 fs | QEq |
 | MACE | metal | 1 fs | Learned |
 
-## Pipeline
-
-Each potential runs the same three-stage simulation:
-
-1. **Generate** — melt-quench to create amorphous SiO₂
-2. **Cracking** — uniaxial deformation to fracture the sample
-3. **GCMC** — Grand Canonical Monte Carlo water insertion into the crack
-
 ## Setup
 
 ```bash
@@ -25,33 +17,42 @@ bash setup.sh
 conda activate silica-water-test-env
 ```
 
-This installs LAMMPS, PyTorch, and mace-torch into a conda environment.
+## Pipeline
 
-## Running
+Each potential runs three stages. Run them one at a time — stage 2 produces `cracking.data` which must be edited into `cracking-mod.data` before stage 3.
+
+### Stage 1: Generate (melt-quench amorphous SiO₂)
 
 ```bash
-bash run_vashishta.sh
-bash run_reaxff.sh
-bash run_mace.sh
+bash run_vashishta_generate.sh
+bash run_reaxff_generate.sh
+bash run_mace_generate.sh
 ```
 
-Each script runs all three stages sequentially. Logs go to `logs/<potential>/` and Ovito-compatible `.lammpstrj` trajectories are written inside each potential's directory.
+### Stage 2: Cracking (uniaxial deformation)
 
-## Files
+```bash
+bash run_vashishta_cracking.sh
+bash run_reaxff_cracking.sh
+bash run_mace_cracking.sh
+```
 
+After cracking, edit `cracking.data` → `cracking-mod.data` (add water atom types).
+For MACE, `prepare_gcmc_data.py` handles this automatically in stage 3.
+
+### Stage 3: GCMC (water insertion)
+
+```bash
+bash run_vashishta_gcmc.sh
+bash run_reaxff_gcmc.sh
+bash run_mace_gcmc.sh
 ```
-setup.sh              # environment setup
-run_vashishta.sh      # run all 3 stages for Vashishta
-run_reaxff.sh         # run all 3 stages for ReaxFF
-run_mace.sh           # run all 3 stages for MACE
-Vashishta potential/  # input scripts + force field
-Reaxff potential/     # input scripts + force field
-MACE potential/       # input scripts + model + data prep
-```
+
+Logs go to `logs/<potential>/`. Ovito trajectories (`.lammpstrj`) are in each potential's directory.
 
 ## References
 
-- Vashishta potential: P. Vashishta et al., *J. Appl. Phys.* 68, 3262 (1990)
+- Vashishta: P. Vashishta et al., *J. Appl. Phys.* 68, 3262 (1990)
 - ReaxFF: A.C.T. van Duin et al., *J. Phys. Chem. A* 105, 9396 (2001)
 - MACE: I. Batatia et al., *NeurIPS* (2022)
 - LAMMPS Tutorials: S. Gravelle et al., *LiveCoMS* 6(1), 3037 (2025)
