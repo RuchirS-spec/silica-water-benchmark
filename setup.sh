@@ -45,6 +45,12 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     cmake ../src/cmake \
       -D PKG_REAXFF=ON \
       -D PKG_ML-MACE=ON \
+      -D PKG_MANYBODY=ON \
+      -D PKG_MOLECULE=ON \
+      -D PKG_MC=ON \
+      -D PKG_KSPACE=ON \
+      -D PKG_RIGID=ON \
+      -D PKG_QEQ=ON \
       -D CMAKE_PREFIX_PATH="$TORCH_CMAKE" \
       -D CMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
       -D USE_CUDA=OFF
