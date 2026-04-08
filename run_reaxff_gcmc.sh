@@ -8,6 +8,4 @@ if [ ! -f cracking-mod.data ]; then
     echo "ERROR: cracking-mod.data not found. edit cracking.data first."
     exit 1
 fi
-echo "=== ReaxFF: gcmc ==="
 lmp -in gcmc.lmp 2>&1 | tee "$LOGS/gcmc.log"
-echo "done. trajectory: gcmc_reax_traj.lammpstrj"
