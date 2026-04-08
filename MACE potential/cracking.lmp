@@ -1,0 +1,32 @@
+# MACE Potential — Uniaxial Deformation (Cracking)
+# Mirrors the Vashishta/ReaxFF pipeline using the MACE-MP-0 foundation model
+
+# 1. Initialization & Logging
+log cracking_mace.log
+units metal              # MACE uses metal units (eV, Å, ps)
+boundary p p p
+atom_style atomic
+atom_modify map yes      # Required for MACE
+newton on                # Required for MACE
+
+read_data generate.data
+
+# 2. MACE Force Field
+pair_style mace no_domain_decomposition
+pair_coeff * * MACE_SiOH.model Si O
+
+# 3. Output & Visualization
+dump ovito_dump all custom 250 cracking_traj.lammpstrj id type element x y z
+dump_modify ovito_dump element Si O
+
+thermo 250
+thermo_style custom step temp etotal vol density
+
+# 4. Deformation & Run Settings
+# Same physical time (50 ps) and strain rate (0.005 /ps) as Vashishta
+timestep 0.001           # 1 fs timestep
+fix nvt1 all nvt temp 300 300 0.1
+fix mydef all deform 1 x erate 0.005
+run 50000
+
+write_data cracking.data

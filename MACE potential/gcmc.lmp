@@ -1,0 +1,62 @@
+# MACE Potential — GCMC Water Adsorption
+# Mirrors the Vashishta/ReaxFF pipeline using the MACE-MP-0 foundation model
+#
+# IMPORTANT: This script requires cracking-mod.data (4 atom types).
+# Run prepare_gcmc_data.py first to convert cracking.data → cracking-mod.data
+
+# 1. Initialization & Logging
+log gcmc_mace.log
+units metal              # MACE uses metal units (eV, Å, ps)
+boundary p p p
+atom_style full          # Required for fix gcmc molecule insertion
+atom_modify map yes      # Required for MACE
+newton on                # Required for MACE
+
+read_data cracking-mod.data
+molecule h2omol H2O.mol
+
+# Seed a few water molecules so MACE has H-atoms from the start
+create_atoms 0 random 3 3245 NULL mol h2omol 4585 overlap 2.0 maxtry 50
+
+# 2. Groupings
+# Types: 1=Si, 2=O(silica), 3=OW(water), 4=HW(water)
+group SiO type 1 2
+group H2O type 3 4
+
+# 3. MACE Force Field
+# No charge equilibration needed — MACE handles electrostatics implicitly
+pair_style mace no_domain_decomposition
+pair_coeff * * MACE_SiOH.model Si O O H
+
+variable oxygen atom type==3
+group oxygen dynamic all var oxygen
+variable nO equal count(oxygen)
+
+# 4. Minimization
+min_style fire
+minimize 0.0 0.001 10000 100000
+reset_timestep 0
+
+# 5. Thermostat
+compute ctH2O H2O temp
+compute_modify thermo_temp dynamic/dof yes
+compute_modify ctH2O dynamic/dof yes
+fix mynvt H2O nvt temp 300 300 0.1    # Tdamp = 0.1 ps for metal units
+fix_modify mynvt temp ctH2O
+timestep 0.001                         # 1 fs timestep
+
+# 6. GCMC Insertion Configuration
+# Chemical potential: -0.5 eV (same as Vashishta)
+# tfac = 1.0 (fully flexible water — all 9 DOF active, no SHAKE)
+variable tfac equal 1.0
+fix fgcmc H2O gcmc 100 100 0 0 65899 300 -0.5 0.1 mol h2omol tfac_insert ${tfac} full_energy pressure 100.0
+
+# 7. Output & Visualization
+dump ovito_dump all custom 250 gcmc_mace_traj.lammpstrj id type element x y z
+dump_modify ovito_dump element Si O O H
+
+thermo 250
+thermo_style custom step temp etotal v_nO f_fgcmc[3] f_fgcmc[4] f_fgcmc[5] f_fgcmc[6]
+
+# 8. Run — 25 ps (same physical time as Vashishta)
+run 25000

@@ -1,0 +1,51 @@
+# 1. Initialization & Logging
+log gcmc_reax.log
+units real          
+boundary p p p
+atom_style full
+
+read_data cracking-mod.data
+molecule h2omol H2O.mol
+
+# Seed a few water molecules so ReaxFF has H-atoms to initialize buffers
+create_atoms 0 random 3 3245 NULL mol h2omol 4585 overlap 2.0 maxtry 50
+
+# 2. Groupings
+group SiO type 1 2
+group H2O type 3 4
+
+# 3. ReaxFF Force Field & Charge Equilibration (increased buffers!)
+pair_style reaxff NULL safezone 8.0 mincap 300 minhbonds 200
+pair_coeff * * ffield.reax.SiOH Si O O H
+fix qeq all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff
+
+variable oxygen atom type==3
+group oxygen dynamic all var oxygen
+variable nO equal count(oxygen)
+
+# 4. Minimization
+min_style fire
+minimize 0.0 0.1 10000 100000
+reset_timestep 0
+
+# 5. Thermostat
+compute ctH2O H2O temp
+compute_modify thermo_temp dynamic/dof yes
+compute_modify ctH2O dynamic/dof yes
+fix mynvt H2O nvt temp 300 300 100.0   
+fix_modify mynvt temp ctH2O
+timestep 0.25                          
+
+# 6. GCMC Insertion Configuration
+variable tfac equal 1.0
+fix fgcmc H2O gcmc 400 100 0 0 65899 300 -11.53 0.1 mol h2omol tfac_insert ${tfac} full_energy pressure 100.0
+
+# 7. Output & Visualization
+dump ovito_dump all custom 1000 gcmc_reax_traj.lammpstrj id type element x y z
+dump_modify ovito_dump element Si O O H
+
+thermo 1000
+thermo_style custom step temp etotal v_nO f_fgcmc[3] f_fgcmc[4] f_fgcmc[5] f_fgcmc[6]
+
+# 8. Run Time 
+run 100000

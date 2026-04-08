@@ -1,0 +1,39 @@
+# LAMMPS Input File
+# Licensed under CC BY 4.0
+# A Set of Tutorials for the LAMMPS Simulation Package (LiveCoMS, 2025)
+# By Simon Gravelle, Cecilia M. S. Alvares, Jacob R. Gissinger, and Axel Kohlmeyer
+# Please cite doi.org/10.33011/livecoms.6.1.3037
+# Find more on GitHub: https://github.com/lammpstutorials
+
+# 1. Initialization & Logging
+log cracking_reax.log
+units real          # CRITICAL: ReaxFF uses real units (fs, kcal/mol)
+boundary p p p
+atom_style full
+
+read_data generate.data
+
+# 2. ReaxFF Force Field & Charge Equilibration
+pair_style reaxff NULL
+pair_coeff * * ffield.reax.SiOH Si O
+fix qeq all qeq/reaxff 1 0.0 10.0 1.0e-6 reaxff  # Using the updated keyword!
+
+# 3. Output & Visualization (4x Multiplier applied)
+dump ovito_dump all custom 1000 cracking_traj.lammpstrj id type element x y z
+dump_modify ovito_dump element Si O
+
+thermo 1000
+thermo_style custom step temp etotal vol density
+
+# 4. Deformation & Run Settings
+timestep 0.25       # CRITICAL: ReaxFF requires 0.25 fs timestep
+fix nvt1 all nvt temp 300 300 100.0   # Tdamp is 100.0 for real units
+
+# CRITICAL: The deformation rate must be divided by 1000 because we moved from picoseconds to femtoseconds!
+# Old rate: 0.005 / ps  --> New rate: 0.000005 / fs
+fix mydef all deform 1 x erate 0.000005
+
+# 4x Multiplier applied to match the exact same physical time (50 ps total)
+run 200000
+
+write_data cracking.data

@@ -1,0 +1,23 @@
+# generated data
+*.data
+*.lammpstrj
+log.lammps
+
+# logs (tracked via scripts, but output is local)
+logs/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# os junk
+.DS_Store
+Thumbs.db
+
+# notebook & report artifacts
+*.ipynb
+*.html
+*.svg
+*.png
+pipeline_changes_doc.md

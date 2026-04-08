@@ -1,0 +1,48 @@
+# LAMMPS Input File
+# Licensed under CC BY 4.0
+# A Set of Tutorials for the LAMMPS Simulation Package (LiveCoMS, 2025)
+# By Simon Gravelle, Cecilia M. S. Alvares, Jacob R. Gissinger, and Axel Kohlmeyer
+# Please cite doi.org/10.33011/livecoms.6.1.3037
+# Find more on GitHub: https://github.com/lammpstutorials
+
+units metal
+boundary p p p
+log generate_performance.log
+atom_style full
+pair_style vashishta
+neighbor 1.0 bin
+neigh_modify delay 1
+
+region box block -18.0 18.0 -9.0 9.0 -9.0 9.0
+create_box 2 box
+labelmap atom 1 Si 2 O
+mass Si 28.0855
+mass O 15.9994
+create_atoms Si random 240 5802 box overlap 2.0 maxtry 500
+create_atoms O random 480 1072 box overlap 2.0 maxtry 500
+
+pair_coeff * * SiO.1990.vashishta Si O
+
+#dump viz all image 250 myimage-*.ppm type type shiny 0.1 box no 0.01 view 180 90 zoom 3.4 size 1700 700
+#dump_modify viz backcolor white acolor Si yellow adiam Si 2.5 acolor O red adiam O 2
+
+thermo 250
+thermo_style custom step temp etotal vol density
+
+dump ovito_dump all custom 250 generate_traj.lammpstrj id type element x y z
+dump_modify ovito_dump element Si O
+
+velocity all create 6000 8289 rot yes dist gaussian
+fix mynvt all nvt temp 6000 6000 0.1
+timestep 0.001
+run 10000
+
+fix mynvt all nvt temp 6000 300 0.1
+run 30000
+
+unfix mynvt
+
+fix mynpt all npt temp 300 300 0.1 aniso 1 1 1
+run 10000
+
+write_data generate.data
