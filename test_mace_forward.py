@@ -29,11 +29,13 @@ data = {
                                      dtype=torch.float64, device=device),
     "node_attrs":       torch.zeros(n, 95, dtype=torch.float64, device=device),
     "batch":            torch.zeros(n, dtype=torch.long, device=device),
+    "ptr":              torch.tensor([0, n], dtype=torch.long, device=device),
     "edge_index":       torch.tensor([[0,1,2,3],[1,0,3,2]],
                                      dtype=torch.long, device=device),
     "shifts":           torch.zeros(2, 3, dtype=torch.float64, device=device),
     "unit_shifts":      torch.zeros(2, 3, dtype=torch.float64, device=device),
     "cell":             torch.eye(3, dtype=torch.float64, device=device).unsqueeze(0)*10,
+    "head":             torch.tensor([0], dtype=torch.long, device=device),
 }
 # Set node features for Si (Z=14) and O (Z=8)
 data["node_attrs"][0, 14] = 1.0  # Si
