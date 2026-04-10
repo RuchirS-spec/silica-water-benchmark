@@ -3,6 +3,8 @@
 # Atom types: 3 = OW (water oxygen), 4 = HW (water hydrogen)
 
 3 atoms
+0 bonds
+0 angles
 
 Coords
 
@@ -15,3 +17,9 @@ Types
 1   3
 2   4
 3   4
+
+Charges
+
+1   0.0000
+2   0.0000
+3   0.0000

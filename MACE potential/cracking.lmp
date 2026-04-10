@@ -13,7 +13,7 @@ read_data generate.data
 
 # 2. MACE Force Field
 pair_style mace no_domain_decomposition
-pair_coeff * * MACE_SiOH.model Si O
+pair_coeff * * MACE_SiOH.pt Si O device cuda
 
 # 3. Output & Visualization
 dump ovito_dump all custom 250 cracking_traj.lammpstrj id type element x y z

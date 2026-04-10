@@ -42,6 +42,15 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     mkdir -p "$BUILD/build"
     cd "$BUILD/build"
 
+    # Enable CUDA if nvcc is available on this machine
+    if command -v nvcc &>/dev/null; then
+        echo "CUDA detected — building with GPU support (USE_CUDA=ON)"
+        CUDA_FLAG="-D USE_CUDA=ON"
+    else
+        echo "nvcc not found — building CPU-only (USE_CUDA=OFF)"
+        CUDA_FLAG="-D USE_CUDA=OFF"
+    fi
+
     cmake ../src/cmake \
       -D PKG_REAXFF=ON \
       -D PKG_ML-MACE=ON \
@@ -53,7 +62,7 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
       -D PKG_QEQ=ON \
       -D CMAKE_PREFIX_PATH="$TORCH_CMAKE" \
       -D CMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
-      -D USE_CUDA=OFF
+      $CUDA_FLAG
 
     make -j"$(nproc || echo 2)"
     make install

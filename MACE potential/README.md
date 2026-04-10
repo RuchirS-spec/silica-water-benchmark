@@ -14,23 +14,21 @@ LAMMPS from source with either:
 
 This guide assumes the original `pair_style mace` interface.
 
-### 2. MACE-MP-0 Model File
-Download and convert the MACE-MP-0 foundation model for LAMMPS:
+### 2. MACE Model File (`.pt` format)
+The LAMMPS MACE pair style requires a TorchScript (`.pt`) model file.
+If you have a `.model` file, convert it first:
 
 ```bash
 # Install MACE
 pip install mace-torch
 
-# Download the medium model (recommended balance of speed vs accuracy)
-# Models available at: https://github.com/ACEsuit/mace-mp
-
-# Convert for LAMMPS
+# Convert an existing .model file to the LAMMPS-compatible .pt format
 python -m mace.cli.create_lammps_model \
-    /path/to/MACE-MP-0-medium.model \
-    --output mace_mp_medium_lammps.pt
+    MACE_SiOH.model \
+    --output MACE_SiOH.pt
 ```
 
-Place the resulting `mace_mp_medium_lammps.pt` file in this directory.
+Place `MACE_SiOH.pt` in this directory. All three scripts reference this filename.
 
 ## Pipeline
 
@@ -95,7 +93,7 @@ lmp -in gcmc.lmp
 | `gcmc.lmp` | Stage 3: GCMC water adsorption |
 | `H2O.mol` | Water molecule template (OW + 2×HW) |
 | `prepare_gcmc_data.py` | Converts `cracking.data` → `cracking-mod.data` |
-| `mace_mp_medium_lammps.pt` | MACE model file (**you must provide this**) |
+| `MACE_SiOH.pt` | MACE model file (**you must provide this** — convert from `.model` with `create_lammps_model`) |
 | `README.md` | This file |
 
 ## Notes
@@ -104,6 +102,10 @@ lmp -in gcmc.lmp
   Electrostatics are captured implicitly in the learned potential energy surface.
 - **`no_domain_decomposition`**: Used in `pair_style mace` to build a proper
   periodic graph. Recommended for single-node runs.
-- **GPU acceleration**: MACE benefits significantly from GPU execution. If your
-  build supports it, run with Kokkos for GPU acceleration.
+- **GPU acceleration**: All three scripts pass `device cuda` in `pair_coeff`,
+  which routes the PyTorch MACE computation to the GPU. This requires LAMMPS
+  to be built with `USE_CUDA=ON` (see `setup.sh` — it auto-detects `nvcc`).
+  No Kokkos flags are needed; the GPU is managed by PyTorch directly.
+- **Model file format**: LAMMPS requires a TorchScript `.pt` file, not a raw
+  `.model` file. Use `mace.cli.create_lammps_model` to convert if needed.
 - **`atom_modify map yes`**: Required for MACE to correctly map atomic indices.
