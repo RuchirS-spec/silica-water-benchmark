@@ -19,28 +19,45 @@ mass O 15.9994
 create_atoms Si random 240 5802 box overlap 2.0 maxtry 500
 create_atoms O random 480 1072 box overlap 2.0 maxtry 500
 
-# 3. MACE Force Field
+# ---------------------------------------------------------------
+# 3. PHASE 1 — Push apart overlapping atoms with a SOFT potential
+#    ML potentials (MACE) cannot handle close contacts from random
+#    placement. Use pair_style soft to ramp up a repulsive wall,
+#    then switch to MACE once atoms are safely separated.
+# ---------------------------------------------------------------
+pair_style soft 3.0
+pair_coeff * * 10.0
+
+neigh_modify every 1 delay 0 check yes
+timestep 0.001
+
+thermo 100
+thermo_style custom step temp pe etotal press vol density
+
+# Ramp the soft prefactor from 0→50 over 2000 steps
+variable prefactor equal ramp(0,50)
+fix softramp all adapt 1 pair soft a * * v_prefactor
+
+velocity all create 300 8289 rot yes dist gaussian
+fix nvelim all nve/limit 0.1
+run 2000
+unfix nvelim
+unfix softramp
+
+# ---------------------------------------------------------------
+# 4. PHASE 2 — Switch to MACE potential
+# ---------------------------------------------------------------
 pair_style mace no_domain_decomposition
 pair_coeff * * MACE_SiOH.model Si O
 
-# 4. Output & Visualization
+neigh_modify every 1 delay 0 check yes
+
+# 5. Output & Visualization
 dump ovito_dump all custom 250 generate_traj.lammpstrj id type element x y z
 dump_modify ovito_dump element Si O
 
-thermo 50
+thermo 250
 thermo_style custom step temp pe etotal press vol density
-
-# 5. Relax initial close contacts before dynamics
-#    MACE produces extreme forces for overlapping atoms — minimize first
-timestep 0.001           # 1 fs timestep (standard for MACE with metal units)
-
-minimize 1.0e-4 1.0e-6 1000 10000
-
-# 5b. Gentle push-apart with limited displacement (0.1 Å max per step)
-velocity all create 300 8289 rot yes dist gaussian
-fix nvelim all nve/limit 0.1
-run 1000
-unfix nvelim
 
 # 6. Annealing Procedure (same physical time as Vashishta: 50 ps total)
 
