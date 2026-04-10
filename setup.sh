@@ -60,11 +60,16 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     mkdir -p "$BUILD/build"
     cd "$BUILD/build"
 
-    # Enable CUDA if nvcc is available; also pass the CUDA compiler path explicitly
+    # Enable CUDA if nvcc is available; pass compiler + toolkit root so cmake
+    # can locate libcudart (common source of "missing CUDA_CUDART_LIBRARY")
     if command -v nvcc &>/dev/null; then
         echo "CUDA detected — building with GPU support (USE_CUDA=ON)"
         CUDA_COMPILER=$(which nvcc)
-        CUDA_FLAG="-D USE_CUDA=ON -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER}"
+        CUDA_ROOT=$(dirname $(dirname "$CUDA_COMPILER"))
+        CUDA_FLAG="-D USE_CUDA=ON \
+          -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER} \
+          -D CUDA_TOOLKIT_ROOT_DIR=${CUDA_ROOT} \
+          -D CUDA_CUDART_LIBRARY=${CUDA_ROOT}/lib64/libcudart.so"
     else
         echo "nvcc not found — building CPU-only (USE_CUDA=OFF)"
         CUDA_FLAG="-D USE_CUDA=OFF"
