@@ -2,6 +2,7 @@
 # Mirrors the Vashishta/ReaxFF pipeline using the MACE-MP-0 foundation model
 
 # 1. Initialization & Logging
+echo both
 log generate_mace.log
 units metal              # MACE uses metal units (eV, Å, ps)
 boundary p p p
@@ -26,15 +27,26 @@ pair_coeff * * MACE_SiOH.pt Si O
 dump ovito_dump all custom 250 generate_traj.lammpstrj id type element x y z
 dump_modify ovito_dump element Si O
 
-thermo 250
-thermo_style custom step temp etotal vol density
+thermo 50
+thermo_style custom step temp pe etotal press vol density
 
-# 5. Annealing Procedure (same physical time as Vashishta: 50 ps total)
+# 5. Relax initial close contacts before dynamics
+#    MACE produces extreme forces for overlapping atoms — minimize first
+timestep 0.001           # 1 fs timestep (standard for MACE with metal units)
+
+minimize 1.0e-4 1.0e-6 1000 10000
+
+# 5b. Gentle push-apart with limited displacement (0.1 Å max per step)
+velocity all create 300 8289 rot yes dist gaussian
+fix nvelim all nve/limit 0.1
+run 1000
+unfix nvelim
+
+# 6. Annealing Procedure (same physical time as Vashishta: 50 ps total)
 
 # Stage 1: Melt at 6000 K — 10 ps
 velocity all create 6000 8289 rot yes dist gaussian
 fix mynvt all nvt temp 6000 6000 0.1
-timestep 0.001           # 1 fs timestep (standard for MACE with metal units)
 run 10000
 
 # Stage 2: Cool 6000 → 300 K — 30 ps
