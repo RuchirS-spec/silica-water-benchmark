@@ -60,19 +60,33 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     mkdir -p "$BUILD/build"
     cd "$BUILD/build"
 
-    # Enable CUDA if nvcc is available; pass compiler + toolkit root so cmake
-    # can locate libcudart (common source of "missing CUDA_CUDART_LIBRARY")
+    # Enable CUDA if nvcc is available.
+    # We must add CUDA_ROOT to CMAKE_PREFIX_PATH so PyTorch's own Caffe2Config.cmake
+    # can run find_package(CUDA) successfully — setting CUDA_TOOLKIT_ROOT_DIR alone
+    # is not enough because Caffe2 uses its own cmake search path.
+    # libcudart lives in lib64 for system CUDA installs and lib for conda CUDA.
     if command -v nvcc &>/dev/null; then
         echo "CUDA detected — building with GPU support (USE_CUDA=ON)"
         CUDA_COMPILER=$(which nvcc)
         CUDA_ROOT=$(dirname $(dirname "$CUDA_COMPILER"))
+        # Find libcudart.so — skip the stubs directory
+        CUDART=$(find "$CUDA_ROOT" -maxdepth 4 \
+            \( -name "libcudart.so" -o -name "libcudart.so.12" -o -name "libcudart.so.11.0" \) \
+            ! -path "*/stubs/*" 2>/dev/null | head -1)
+        export CUDA_HOME="$CUDA_ROOT"
+        export LD_LIBRARY_PATH="${CUDA_ROOT}/lib64:${CUDA_ROOT}/lib:${LD_LIBRARY_PATH:-}"
+        echo "  nvcc:   $CUDA_COMPILER"
+        echo "  root:   $CUDA_ROOT"
+        echo "  cudart: ${CUDART:-not found, cmake will search}"
         CUDA_FLAG="-D USE_CUDA=ON \
           -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER} \
-          -D CUDA_TOOLKIT_ROOT_DIR=${CUDA_ROOT} \
-          -D CUDA_CUDART_LIBRARY=${CUDA_ROOT}/lib64/libcudart.so"
+          -D CUDA_TOOLKIT_ROOT_DIR=${CUDA_ROOT}"
+        [ -n "$CUDART" ] && CUDA_FLAG="$CUDA_FLAG -D CUDA_CUDART_LIBRARY=${CUDART}"
+        CMAKE_PREFIX="${TORCH_CMAKE};${CUDA_ROOT}"
     else
         echo "nvcc not found — building CPU-only (USE_CUDA=OFF)"
         CUDA_FLAG="-D USE_CUDA=OFF"
+        CMAKE_PREFIX="${TORCH_CMAKE}"
     fi
 
     cmake ../src/cmake \
@@ -84,7 +98,7 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
       -D PKG_KSPACE=ON \
       -D PKG_RIGID=ON \
       -D PKG_QEQ=ON \
-      -D CMAKE_PREFIX_PATH="$TORCH_CMAKE" \
+      -D CMAKE_PREFIX_PATH="$CMAKE_PREFIX" \
       -D CMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
       -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
       $CUDA_FLAG
