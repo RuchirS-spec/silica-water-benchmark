@@ -21,7 +21,7 @@ create_atoms O random 480 1072 box overlap 2.0 maxtry 500
 
 # 3. MACE Force Field
 pair_style mace no_domain_decomposition
-pair_coeff * * MACE_SiOH.pt Si O
+pair_coeff * * MACE_SiOH.model Si O
 
 # 4. Output & Visualization
 dump ovito_dump all custom 250 generate_traj.lammpstrj id type element x y z
