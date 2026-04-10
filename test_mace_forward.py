@@ -16,32 +16,38 @@ print("Loading model...", flush=True)
 t0 = time.time()
 model = torch.jit.load("MACE potential/MACE_SiOH.pt", map_location=device)
 model.eval()
-print(f"Loaded in {time.time()-t0:.1f}s\n")
+print(f"Loaded in {time.time()-t0:.1f}s")
+
+# Derive the number of elements from the model itself
+z_table = model.atomic_numbers.tolist()   # e.g. [1,2,...,83,89,...,94]
+n_elements = len(z_table)
+z_to_idx = {z: i for i, z in enumerate(z_table)}
+print(f"Model covers {n_elements} elements (Z={z_table[0]}..{z_table[-1]})")
+print(f"Si index: {z_to_idx[14]}, O index: {z_to_idx[8]}\n")
 
 # Minimal fake system: 4 atoms (2 Si + 2 O) in a small box
-# Matches what LAMMPS passes to MACE's forward()
 n = 4
 print(f"Building dummy input ({n} atoms: 2 Si + 2 O)...", flush=True)
 
 data = {
-    "positions":        torch.tensor([[0.0,0.0,0.0],[2.0,0.0,0.0],
-                                      [1.0,1.0,0.0],[3.0,1.0,0.0]],
-                                     dtype=torch.float64, device=device),
-    "node_attrs":       torch.zeros(n, 95, dtype=torch.float64, device=device),
-    "batch":            torch.zeros(n, dtype=torch.long, device=device),
-    "ptr":              torch.tensor([0, n], dtype=torch.long, device=device),
-    "edge_index":       torch.tensor([[0,1,2,3],[1,0,3,2]],
-                                     dtype=torch.long, device=device),
-    "shifts":           torch.zeros(2, 3, dtype=torch.float64, device=device),
-    "unit_shifts":      torch.zeros(2, 3, dtype=torch.float64, device=device),
-    "cell":             torch.eye(3, dtype=torch.float64, device=device).unsqueeze(0)*10,
-    "head":             torch.tensor([0], dtype=torch.long, device=device),
+    "positions":    torch.tensor([[0.0,0.0,0.0],[2.0,0.0,0.0],
+                                  [1.0,1.0,0.0],[3.0,1.0,0.0]],
+                                 dtype=torch.float64, device=device),
+    "node_attrs":   torch.zeros(n, n_elements, dtype=torch.float64, device=device),
+    "batch":        torch.zeros(n, dtype=torch.long, device=device),
+    "ptr":          torch.tensor([0, n], dtype=torch.long, device=device),
+    "edge_index":   torch.tensor([[0,1,2,3],[1,0,3,2]],
+                                 dtype=torch.long, device=device),
+    "shifts":       torch.zeros(2, 3, dtype=torch.float64, device=device),
+    "unit_shifts":  torch.zeros(2, 3, dtype=torch.float64, device=device),
+    "cell":         torch.eye(3, dtype=torch.float64, device=device).unsqueeze(0)*10,
+    "head":         torch.tensor([0], dtype=torch.long, device=device),
 }
-# Set node features for Si (Z=14) and O (Z=8)
-data["node_attrs"][0, 14] = 1.0  # Si
-data["node_attrs"][1, 8]  = 1.0  # O
-data["node_attrs"][2, 14] = 1.0  # Si
-data["node_attrs"][3, 8]  = 1.0  # O
+# One-hot encode using the model's own element index table
+data["node_attrs"][0, z_to_idx[14]] = 1.0  # Si
+data["node_attrs"][1, z_to_idx[8]]  = 1.0  # O
+data["node_attrs"][2, z_to_idx[14]] = 1.0  # Si
+data["node_attrs"][3, z_to_idx[8]]  = 1.0  # O
 
 local_or_ghost = torch.ones(n, dtype=torch.bool, device=device)
 
