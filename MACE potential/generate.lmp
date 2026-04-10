@@ -19,7 +19,7 @@ create_atoms Si random 240 5802 box overlap 2.0 maxtry 500
 create_atoms O random 480 1072 box overlap 2.0 maxtry 500
 
 # 3. MACE Force Field
-pair_style mace no_domain_decomposition device cuda
+pair_style mace no_domain_decomposition
 pair_coeff * * MACE_SiOH.pt Si O
 
 # 4. Output & Visualization

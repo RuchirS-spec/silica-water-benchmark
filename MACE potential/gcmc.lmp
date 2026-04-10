@@ -25,7 +25,7 @@ group H2O type 3 4
 
 # 3. MACE Force Field
 # No charge equilibration needed — MACE handles electrostatics implicitly
-pair_style mace no_domain_decomposition device cuda
+pair_style mace no_domain_decomposition
 pair_coeff * * MACE_SiOH.pt Si O O H
 
 variable oxygen atom type==3

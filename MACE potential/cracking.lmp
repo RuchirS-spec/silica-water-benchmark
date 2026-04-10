@@ -12,7 +12,7 @@ newton on                # Required for MACE
 read_data generate.data
 
 # 2. MACE Force Field
-pair_style mace no_domain_decomposition device cuda
+pair_style mace no_domain_decomposition
 pair_coeff * * MACE_SiOH.pt Si O
 
 # 3. Output & Visualization
