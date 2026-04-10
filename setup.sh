@@ -81,6 +81,7 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
       -D PKG_QEQ=ON \
       -D CMAKE_PREFIX_PATH="$TORCH_CMAKE" \
       -D CMAKE_INSTALL_PREFIX="$CONDA_PREFIX" \
+      -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
       $CUDA_FLAG
 
     make -j"$(nproc || echo 2)"
