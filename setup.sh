@@ -24,13 +24,31 @@ fi
 
 # python deps
 pip install --upgrade pip
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install PyTorch — GPU build if CUDA is available, CPU-only otherwise
+if command -v nvcc &>/dev/null; then
+    CUDA_VER=$(nvcc --version | grep -oP 'release \K[0-9]+\.[0-9]+' | tr -d '.')
+    # Map e.g. 12.1 -> cu121, 11.8 -> cu118; fall back to cu121
+    case "$CUDA_VER" in
+        118) TORCH_CUDA="cu118" ;;
+        121) TORCH_CUDA="cu121" ;;
+        124) TORCH_CUDA="cu124" ;;
+        126) TORCH_CUDA="cu126" ;;
+        *)   TORCH_CUDA="cu121" ;;
+    esac
+    echo "Installing GPU PyTorch (${TORCH_CUDA})..."
+    pip install torch --index-url "https://download.pytorch.org/whl/${TORCH_CUDA}"
+else
+    echo "No CUDA found — installing CPU PyTorch..."
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+fi
+
 pip install mace-torch
 
 # build mace-lammps if missing
 if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     echo "ML-MACE not found in LAMMPS binary. Building custom LAMMPS with MACE support..."
-    
+
     conda install -y -c conda-forge cmake cxx-compiler mkl-devel fftw pkg-config binutils_linux-64
 
     BUILD="/tmp/lammps-mace-$(date +%s)"
@@ -42,10 +60,11 @@ if ! lmp -help 2>&1 | grep -q "ML-MACE"; then
     mkdir -p "$BUILD/build"
     cd "$BUILD/build"
 
-    # Enable CUDA if nvcc is available on this machine
+    # Enable CUDA if nvcc is available; also pass the CUDA compiler path explicitly
     if command -v nvcc &>/dev/null; then
         echo "CUDA detected — building with GPU support (USE_CUDA=ON)"
-        CUDA_FLAG="-D USE_CUDA=ON"
+        CUDA_COMPILER=$(which nvcc)
+        CUDA_FLAG="-D USE_CUDA=ON -D CMAKE_CUDA_COMPILER=${CUDA_COMPILER}"
     else
         echo "nvcc not found — building CPU-only (USE_CUDA=OFF)"
         CUDA_FLAG="-D USE_CUDA=OFF"
